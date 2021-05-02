@@ -135,5 +135,5 @@ dist/
 build
 statd_asgi.egg-info
 
-
+fake_api.py
 test_api.py
