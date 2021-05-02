@@ -31,11 +31,15 @@ class StatusCodeMetricsMiddleware(BaseHTTPMiddleware):
         logger: Optional[Logger] = None,
     ) -> None:
         super().__init__(app)
+        self.logger = getLogger(__name__) if logger is None else logger
+
         if statsd_client is None:
+            self.logger.debug("No statsd client, starting one")
             statsd_options = dict() if statsd_options is None else statsd_options
             initialize(**statsd_options)
             self.statsd = statsd
         else:
+            self.logger.debug("Using passed in statsd_client")
             self.statsd = statsd_client
 
         if not hasattr(self.statsd, "increment"):
@@ -88,7 +92,7 @@ class StatusCodeMetricsMiddleware(BaseHTTPMiddleware):
                 tags=[f"method:{method}", f"status_code:{response.status_code}"],
             )
         except Exception as exc:
-            self.ogger.exception(exc)
+            self.logger.exception(exc)
             self.logger.error(
                 "Error while incrementing count metric %s.%d. %s",
                 metric_name_base,
