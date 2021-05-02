@@ -1,5 +1,4 @@
 pytest
-pytest-aio
 pytest-coverage
 pytest-mock
 starlette>=0.14.2
