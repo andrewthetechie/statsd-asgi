@@ -14,7 +14,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.types import ASGIApp
 
-from statsd_asgi._utils import get_metric_name_base
+from statsd_asgi.utils import get_metric_name_base
 
 
 class TimingMiddleware(BaseHTTPMiddleware):

@@ -7,7 +7,7 @@ import pytest
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
-from statsd_asgi._utils import get_metric_name_base
+from statsd_asgi.utils import get_metric_name_base
 
 
 def test_get_metric_name_base():

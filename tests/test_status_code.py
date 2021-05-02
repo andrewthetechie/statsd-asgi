@@ -37,9 +37,9 @@ def test_status_code_statsd_options(mocker):
     from statsd_asgi import StatusCodeMetricsMiddleware
 
     mocker.patch.object(
-        statsd_asgi._middlewares.status_code, "initialize", return_value=""
+        statsd_asgi.middlewares.status_code, "initialize", return_value=""
     )
-    mocker.patch.object(statsd_asgi._middlewares.status_code, "statsd", return_value="")
+    mocker.patch.object(statsd_asgi.middlewares.status_code, "statsd", return_value="")
 
     async def app(scope, receive, send):
         assert scope["type"] == "http"
@@ -49,7 +49,7 @@ def test_status_code_statsd_options(mocker):
     app = StatusCodeMetricsMiddleware(
         app, statsd_options={"statsd_host": "testhost", "statsd_port": 1234}
     )
-    statsd_asgi._middlewares.status_code.initialize.assert_called_once_with(
+    statsd_asgi.middlewares.status_code.initialize.assert_called_once_with(
         **{"statsd_host": "testhost", "statsd_port": 1234}
     )
 
@@ -59,10 +59,10 @@ def test_status_code_dispatch(mocker):
     from statsd_asgi import StatusCodeMetricsMiddleware
 
     mocker.patch.object(
-        statsd_asgi._middlewares.status_code, "initialize", return_value=""
+        statsd_asgi.middlewares.status_code, "initialize", return_value=""
     )
     mocker.patch.object(
-        statsd_asgi._middlewares.status_code, "statsd", return_value="", create=True
+        statsd_asgi.middlewares.status_code, "statsd", return_value="", create=True
     )
 
     async def app(scope, receive, send):
@@ -76,7 +76,7 @@ def test_status_code_dispatch(mocker):
     client = TestClient(app)
     response = client.get("/api")
     assert response.status_code == 200
-    statsd_asgi._middlewares.status_code.statsd.increment.assert_called()
+    statsd_asgi.middlewares.status_code.statsd.increment.assert_called()
     # TODO: test the calls of this mock, being lazy for now
 
 
@@ -85,13 +85,13 @@ def test_status_code_dispatch_bad_name(mocker):
     from statsd_asgi import StatusCodeMetricsMiddleware
 
     mocker.patch.object(
-        statsd_asgi._middlewares.status_code, "initialize", return_value=""
+        statsd_asgi.middlewares.status_code, "initialize", return_value=""
     )
     mocker.patch.object(
-        statsd_asgi._middlewares.status_code, "statsd", return_value="", create=True
+        statsd_asgi.middlewares.status_code, "statsd", return_value="", create=True
     )
     mocker.patch.object(
-        statsd_asgi._middlewares.status_code,
+        statsd_asgi.middlewares.status_code,
         "get_metric_name_base",
         return_value="",
         side_effect=Exception("error"),
@@ -108,4 +108,4 @@ def test_status_code_dispatch_bad_name(mocker):
     client = TestClient(app)
     response = client.get("/api")
     assert response.status_code == 200
-    statsd_asgi._middlewares.status_code.statsd.increment.assert_not_called()
+    statsd_asgi.middlewares.status_code.statsd.increment.assert_not_called()
