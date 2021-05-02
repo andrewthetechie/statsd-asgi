@@ -10,13 +10,10 @@ setup: ## Setup a dev environment for working in this repo. Assumes in a venv or
 test: setup ## run python tests
 	pytest
 
-tox: setup ## run tox to test on py3.6-9
-	tox
-
-build: ## build python packages
+build: setup ## build python packages
 	pip install build
 	python -m build --sdist --wheel --outdir dist/
 
 lint: setup ## run python linting
 	black statsd_asgi
-	flake8
+	flake8 statsd_asgi
