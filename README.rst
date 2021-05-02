@@ -53,30 +53,28 @@ Usage with FastAPI
 
 This ASGI middleware should work with any Starlette app, but I work with FastAPI so that's the example I've got for you. PRs welcome for more examples
 
-```
+.. code-block:: python
 
-from fastapi import FastAPI
+	from fastapi import FastAPI
 
-app = FastAPI()
+	app = FastAPI()
 
-from statsd_asgi import TimingMiddleware, StatusCodeMetricsMiddleware
+	from statsd_asgi import TimingMiddleware, StatusCodeMetricsMiddleware
 
-from logging import getLogger
+	from logging import getLogger
 
-statsd*options = {'statsd*host': os.environ.get("STATSD_HOST"),
+	statsd*options = {'statsd*host': os.environ.get("STATSD_HOST"),
 
-				  'statsd\_port': os.environ.get("STATSD\_PORT")
+					'statsd\_port': os.environ.get("STATSD\_PORT")
 
-}
+	}
 
-app.add*middleware(TimingMiddleware, service="testapi", statsd*options=statsd_options)
+	app.add*middleware(TimingMiddleware, service="testapi", statsd*options=statsd_options)
 
-app.add*middleware(StatusCodeMetricsMiddleware, service="testapi", statsd*client=statsd_options)
+	app.add*middleware(StatusCodeMetricsMiddleware, service="testapi", statsd*client=statsd_options)
 
-@app.get("/api")
+	@app.get("/api")
 
-async def root():
+	async def root():
 
-	return {"message": "Hello World"}
-
-```
+		return {"message": "Hello World"}
