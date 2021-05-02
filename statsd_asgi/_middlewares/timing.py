@@ -3,24 +3,21 @@ import time
 from logging import getLogger
 from logging import Logger
 from typing import Any
+from typing import Awaitable
 from typing import Callable
 from typing import Dict
-from typing import List
 from typing import Optional
 
 from datadog import initialize
 from datadog import statsd
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 from starlette.types import ASGIApp
-from starlette.types import Receive
-from starlette.types import Scope
-from starlette.types import Send
 
 from statsd_asgi._utils import get_metric_name_base
 
-VALID_SCOPES = ["http"]
 
-
-class TimingMiddleware:
+class TimingMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: ASGIApp,
@@ -28,10 +25,11 @@ class TimingMiddleware:
         statsd_client: Optional[Callable] = None,
         statsd_options: Optional[Dict[str, Any]] = None,
         service: str = "asgi",
-        tags: Optional[List[str]] = None,
         logger: Optional[Logger] = None,
     ) -> None:
+        super().__init__(app)
         if statsd_client is None:
+            statsd_options = dict() if statsd_options is None else statsd_options
             initialize(**statsd_options)
             self.statsd = statsd
         else:
@@ -48,26 +46,19 @@ class TimingMiddleware:
             )
 
         self.logger = getLogger(__name__) if logger is None else logger
-        self.tags = list() if tags is None else tags
         self.app = app
         self.service = service
         self.logger.debug(
             "Timing middleware init complete for service %s", self.service
         )
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        self.logger.debug("starting timing call for scope %s", scope)
+    async def dispatch(self, request: Request, call_next: Awaitable) -> None:
+        self.logger.debug("starting timing call for request %s", request.url)
         start_time = time.time()
         cpu_start_time = self._get_cpu_time()
-        if scope.get("type", None) not in VALID_SCOPES:
-            self.logger.error(
-                "Scope type %s is not yet implemented for timing",
-                scope.get("type", None),
-            )
-            await self.app(scope, receive, send)
-            return
+        self.logger.debug("Start time clock %d cpu %d", start_time, cpu_start_time)
 
-        path, method = scope["path"], scope["method"]
+        path, method = request.url.path, request.method
         try:
             metric_name_base = get_metric_name_base(self.service, path)
         except Exception as exc:
@@ -77,12 +68,17 @@ class TimingMiddleware:
                 self.service,
                 path,
             )
-            await self.app(scope, receive, send)
-            return
+            return await call_next(request)
 
-        response = await self.app(scope, receive, send)
+        response = await call_next(request)
         stop_time = time.time()
         cpu_stop_time = self._get_cpu_time()
+        self.logger.debug("Stop time clock %d cpu %d", stop_time, cpu_stop_time)
+        self.logger.debug(
+            "Total time clock %f cpu %f",
+            stop_time - start_time,
+            cpu_stop_time - cpu_start_time,
+        )
         try:
             self.statsd.timing(
                 f"{metric_name_base}",
@@ -109,7 +105,7 @@ class TimingMiddleware:
                 metric_name_base,
                 str(exc),
             )
-        return
+        return response
 
     @staticmethod
     def _get_cpu_time():

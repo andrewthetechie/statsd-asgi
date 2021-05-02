@@ -134,3 +134,6 @@ dist/
 .eggs
 build
 statd_asgi.egg-info
+
+
+test_api.py

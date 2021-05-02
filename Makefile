@@ -17,3 +17,6 @@ build: setup ## build python packages
 lint: setup ## run python linting
 	black statsd_asgi
 	flake8 statsd_asgi
+
+check-version: setup ## Check the version of the statsd-asgi package
+	python setyp.py --version

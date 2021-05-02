@@ -1,6 +1,7 @@
 from logging import getLogger
 from logging import Logger
 from typing import Any
+from typing import Awaitable
 from typing import Callable
 from typing import Dict
 from typing import List
@@ -8,17 +9,17 @@ from typing import Optional
 
 from datadog import initialize
 from datadog import statsd
+from starlette.background import BackgroundTasks
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 from starlette.types import ASGIApp
-from starlette.types import Receive
-from starlette.types import Scope
-from starlette.types import Send
 
 from statsd_asgi._utils import get_metric_name_base
 
 VALID_SCOPES = ["http"]
 
 
-class StatusCodeMetricsMiddleware:
+class StatusCodeMetricsMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: ASGIApp,
@@ -29,7 +30,9 @@ class StatusCodeMetricsMiddleware:
         tags: Optional[List[str]] = None,
         logger: Optional[Logger] = None,
     ) -> None:
+        super().__init__(app)
         if statsd_client is None:
+            statsd_options = dict() if statsd_options is None else statsd_options
             initialize(**statsd_options)
             self.statsd = statsd
         else:
@@ -52,17 +55,12 @@ class StatusCodeMetricsMiddleware:
         self.logger.debug(
             "StatusCodeMetrics middleware init complete for service %s", self.service
         )
+        self.background_tasks = BackgroundTasks()
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        self.logger.debug("starting call for scope %s", scope)
-        if scope.get("type", None) not in VALID_SCOPES:
-            self.logger.error(
-                "Scope type %s is not yet implemented", scope.get("type", None)
-            )
-            await self.app(scope, receive, send)
-            return
+    async def dispatch(self, request: Request, call_next: Awaitable) -> None:
+        self.logger.debug("starting response call for %s", request.url)
 
-        path, method = scope["path"], scope["method"]
+        path, method = request.url.path, request.method
         try:
             metric_name_base = get_metric_name_base(self.service, path)
         except Exception as exc:
@@ -72,24 +70,30 @@ class StatusCodeMetricsMiddleware:
                 self.service,
                 path,
             )
-            await self.app(scope, receive, send)
-            return
+            return await call_next(request)
 
-        response = await self.app(scope, receive, send)
+        response = await call_next(request)
+        self.logger.debug(
+            "Sending metric for %s response code %d",
+            metric_name_base,
+            response.status_code,
+        )
+        # increment a metric for this path being requested and the status code we returned
+        # For a request to mysnazzyservice.com/api/v1/endpoint this should end up like
+        # mysnazzyservice.api.v1.endpoint
+        # This metric will be tagged with the request method and the status code
         try:
-            # increment a metric for this path being requested and the status code we returned
-            # For a request to mysnazzyservice.com/api/v1/endpoint this should end up like
-            # mysnazzyservice.api.v1.endpoint.200
-            # This metric will be tagged with the request method
             self.statsd.increment(
-                f"{metric_name_base}.{response.status_code}", tags=[f"method:{method}"]
+                f"{metric_name_base}",
+                tags=[f"method:{method}", f"status_code:{response.status_code}"],
             )
         except Exception as exc:
-            self.logger.exception(exc)
+            self.ogger.exception(exc)
             self.logger.error(
                 "Error while incrementing count metric %s.%d. %s",
                 metric_name_base,
                 response.status_code,
                 str(exc),
             )
-        return
+
+        return response
