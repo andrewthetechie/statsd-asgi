@@ -109,4 +109,3 @@ def test_status_code_dispatch_bad_name(mocker):
     response = client.get("/api")
     assert response.status_code == 200
     statsd_asgi._middlewares.status_code.statsd.increment.assert_not_called()
-    # TODO: test the calls of this mock, being lazy for now
