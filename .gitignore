@@ -109,6 +109,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.python-version
 
 # Spyder project settings
 .spyderproject
@@ -127,3 +128,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+dist/
+.eggs
+build
+statd_asgi.egg-info
