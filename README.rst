@@ -1,3 +1,6 @@
+ARCHIVED
+Turns out https://github.com/Gr1N/aiodogstatsd can do what this code was supposed to do. Go use it instead, it is excellent.
+
 statsd-asgi
 ===========
 
